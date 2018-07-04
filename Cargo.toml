@@ -2,8 +2,9 @@ cargo-features = ["edition"]
 
 [package]
 name = "epilogue"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Zack M. Davis <code@zackmdavis.net>"]
 edition = "2018"
 
 [dependencies]
+prettytable-rs = "0.7"

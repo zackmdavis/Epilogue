@@ -1,10 +1,10 @@
-#![allow(dead_code)]
-
 use std::collections::BTreeMap;
 use std::error::Error;
 
+use prettytable;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum ColumnType {
+pub enum ColumnType {
     Key,
     Integer,
     String,
@@ -12,34 +12,42 @@ enum ColumnType {
 
 // TODO: `Option`-ize to represent NULL?
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum Chamber {
+pub enum Chamber {
     Key(usize),
     Integer(isize),
     String(String),
 }
 
 impl Chamber {
-    fn column_type(&self) -> ColumnType {
+    pub fn column_type(&self) -> ColumnType {
         match *self {
             Chamber::Key(_) => ColumnType::Key,
             Chamber::Integer(_) => ColumnType::Integer,
             Chamber::String(_) => ColumnType::String,
         }
     }
+
+    pub fn display(&self) -> String {
+        match self {
+            Chamber::Key(k) => format!("{}", k),
+            Chamber::Integer(i) => format!("{}", i),
+            Chamber::String(s) => format!("{}", s),
+        }
+    }
 }
 
 #[derive(Debug)]
-struct Column {
+pub struct Column {
     name: String,
     column_type: ColumnType,
 }
 
-struct TableSchema {
+pub struct TableSchema {
     layout: Vec<Column>,
 }
 
 impl TableSchema {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             layout: vec![Column {
                 name: "pk".to_owned(),
@@ -48,14 +56,14 @@ impl TableSchema {
         }
     }
 
-    fn add_column(&mut self, name: String, column_type: ColumnType) {
+    pub fn add_column(&mut self, name: String, column_type: ColumnType) {
         self.layout.push(Column {
             name,
             column_type,
         });
     }
 
-    fn validate_row(
+    pub fn validate_row(
         &self,
         &Row(ref chambers): &Row,
     ) -> Result<(), Box<Error>> {
@@ -75,16 +83,16 @@ impl TableSchema {
     }
 }
 
-struct Row(Vec<Chamber>);
+pub struct Row(pub Vec<Chamber>);
 
-struct Table {
+pub struct Table {
     schema: TableSchema,
     rows: BTreeMap<usize, Row>,
     // TODO indices
 }
 
 impl Table {
-    fn new(schema: TableSchema) -> Self {
+    pub fn new(schema: TableSchema) -> Self {
         Self {
             schema,
             rows: BTreeMap::new(),
@@ -92,13 +100,41 @@ impl Table {
     }
 
     // TODO: use `failure` crate
-    fn insert(&mut self, mut row: Row) -> Result<usize, Box<Error>> {
+    pub fn insert(&mut self, mut row: Row) -> Result<usize, Box<Error>> {
         self.schema.validate_row(&row)?;
         let pk = self.rows.len() + 1;
         row.0[0] = Chamber::Key(pk);
         let p = self.rows.insert(pk, row);
         assert!(p.is_none());
         Ok(pk)
+    }
+
+    pub fn display(&self) -> String {
+        let mut buf = Vec::new();
+        // TODO don't use such absolute paths (but I want to avoid collisions
+        // on `Row`, `Cell`, &c.)
+        let mut display_table = prettytable::Table::new();
+        display_table.set_format(
+            *prettytable::format::consts::FORMAT_NO_LINESEP_WITH_TITLE,
+        );
+        let mut headers = prettytable::row::Row::empty();
+        for column in &self.schema.layout {
+            headers.add_cell(prettytable::cell::Cell::new(&column.name));
+        }
+        display_table.set_titles(headers);
+        for (_, Row(ref chambers)) in &self.rows {
+            let mut display_row = prettytable::row::Row::empty();
+            for chamber in chambers {
+                display_row.add_cell(
+                    prettytable::cell::Cell::new(&chamber.display()),
+                );
+            }
+            display_table.add_row(display_row);
+        }
+        display_table
+            .print(&mut buf)
+            .expect("should print to buffer");
+        String::from_utf8(buf).expect("pretty table should be valid UTF-8")
     }
 }
 
@@ -134,6 +170,27 @@ mod tests {
             Chamber::String("Causality".to_owned()),
         ]);
         assert!(books.insert(causality).is_err());
+    }
+
+    #[test]
+    fn concerning_table_display() {
+        let mut books = example_table();
+        let permutation_city = Row(vec![
+            Chamber::Key(0),
+            Chamber::String("Permutation City".to_owned()),
+            Chamber::Integer(1994),
+        ]);
+        books.insert(permutation_city).unwrap();
+        assert_eq!(
+            books.display(),
+            "\
++----+------------------+------+
+| pk | title            | year |
++----+------------------+------+
+| 1  | Permutation City | 1994 |
++----+------------------+------+
+"
+        );
     }
 
 }
