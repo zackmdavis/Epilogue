@@ -1,10 +1,12 @@
+#![warn(rust_2018_idioms, rust_2018_compatibility)]
+
 use std::collections::BTreeMap;
 use std::error::Error;
 
 use prettytable;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ColumnType {
+crate enum ColumnType {
     Key,
     Integer,
     String,
@@ -12,14 +14,14 @@ pub enum ColumnType {
 
 // TODO: `Option`-ize to represent NULL?
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Chamber {
+crate enum Chamber {
     Key(usize),
     Integer(isize),
     String(String),
 }
 
 impl Chamber {
-    pub fn column_type(&self) -> ColumnType {
+    crate fn column_type(&self) -> ColumnType {
         match *self {
             Chamber::Key(_) => ColumnType::Key,
             Chamber::Integer(_) => ColumnType::Integer,
@@ -27,7 +29,7 @@ impl Chamber {
         }
     }
 
-    pub fn display(&self) -> String {
+    crate fn display(&self) -> String {
         match self {
             Chamber::Key(k) => format!("{}", k),
             Chamber::Integer(i) => format!("{}", i),
@@ -37,17 +39,17 @@ impl Chamber {
 }
 
 #[derive(Debug)]
-pub struct Column {
+crate struct Column {
     name: String,
     column_type: ColumnType,
 }
 
-pub struct TableSchema {
+crate struct TableSchema {
     layout: Vec<Column>,
 }
 
 impl TableSchema {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         Self {
             layout: vec![Column {
                 name: "pk".to_owned(),
@@ -56,17 +58,17 @@ impl TableSchema {
         }
     }
 
-    pub fn add_column(&mut self, name: String, column_type: ColumnType) {
+    crate fn add_column(&mut self, name: String, column_type: ColumnType) {
         self.layout.push(Column {
             name,
             column_type,
         });
     }
 
-    pub fn validate_row(
+    crate fn validate_row(
         &self,
         &Row(ref chambers): &Row,
-    ) -> Result<(), Box<Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         for (i, (ref chamber, ref column_def)) in
             chambers.iter().zip(&self.layout).enumerate()
         {
@@ -83,16 +85,16 @@ impl TableSchema {
     }
 }
 
-pub struct Row(pub Vec<Chamber>);
+crate struct Row(crate Vec<Chamber>);
 
-pub struct Table {
+crate struct Table {
     schema: TableSchema,
     rows: BTreeMap<usize, Row>,
     // TODO indices
 }
 
 impl Table {
-    pub fn new(schema: TableSchema) -> Self {
+    crate fn new(schema: TableSchema) -> Self {
         Self {
             schema,
             rows: BTreeMap::new(),
@@ -100,7 +102,7 @@ impl Table {
     }
 
     // TODO: use `failure` crate
-    pub fn insert(&mut self, mut row: Row) -> Result<usize, Box<Error>> {
+    crate fn insert(&mut self, mut row: Row) -> Result<usize, Box<dyn Error>> {
         self.schema.validate_row(&row)?;
         let pk = self.rows.len() + 1;
         row.0[0] = Chamber::Key(pk);
@@ -109,7 +111,7 @@ impl Table {
         Ok(pk)
     }
 
-    pub fn display(&self) -> String {
+    crate fn display(&self) -> String {
         let mut buf = Vec::new();
         // TODO don't use such absolute paths (but I want to avoid collisions
         // on `Row`, `Cell`, &c.)
