@@ -1,6 +1,9 @@
+cargo-features = ["edition"]
+
 [package]
 name = "epilogue"
 version = "0.1.0"
 authors = ["Zack M. Davis <code@zackmdavis.net>"]
+edition = "2018"
 
 [dependencies]
