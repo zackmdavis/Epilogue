@@ -1,5 +1,3 @@
-#![warn(rust_2018_idioms, rust_2018_compatibility)]
-
 use std::collections::BTreeMap;
 use std::error::Error;
 
@@ -88,8 +86,8 @@ impl TableSchema {
 crate struct Row(crate Vec<Chamber>);
 
 crate struct Table {
-    schema: TableSchema,
-    rows: BTreeMap<usize, Row>,
+    crate schema: TableSchema,
+    crate rows: BTreeMap<usize, Row>,
     // TODO indices
 }
 
