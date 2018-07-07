@@ -17,6 +17,25 @@ struct WhereClause {
     value: Chamber,
 }
 
+fn column_names_to_offsets(
+    schema: &TableSchema,
+    column_names: &[String],
+) -> Result<Vec<usize>, Box<dyn Error>> {
+    // TODO: error if some column names are not found!!
+    Ok(schema
+        .layout
+        .iter()
+        .enumerate()
+        .filter_map(|(i, column)| {
+            if column_names.contains(&column.name) {
+                Some(i)
+            } else {
+                None
+            }
+        })
+        .collect())
+}
+
 impl WhereClause {
     fn new_column_equality(
         schema: &TableSchema,
@@ -44,13 +63,22 @@ impl WhereClause {
 }
 
 struct SelectCommand<'a> {
+    column_offsets: Vec<usize>,
     view: btree_map::Values<'a, usize, Row>,
     filter: Box<dyn Fn(&Row) -> bool>,
 }
 
 impl<'a> SelectCommand<'a> {
-    fn new_table_scan(table: &'a Table, where_clause: WhereClause) -> Self {
+    fn new_table_scan(
+        table: &'a Table,
+        column_names: Vec<String>,
+        where_clause: WhereClause,
+    ) -> Self {
         Self {
+            column_offsets: column_names_to_offsets(
+                &table.schema,
+                &column_names,
+            ).unwrap(),
             view: table.rows.values(),
             filter: Box::new(where_clause.operationalize()),
         }
@@ -103,6 +131,18 @@ mod tests {
     }
 
     #[test]
+    fn concerning_converting_column_names_to_offsets() {
+        let table = example_table();
+        assert_eq!(
+            column_names_to_offsets(
+                &table.schema,
+                &["title".to_owned(), "year".to_owned()]
+            ).unwrap(),
+            vec![1, 2]
+        );
+    }
+
+    #[test]
     fn concerning_select_by_primary_key() {
         let table = example_table();
         let where_clause = WhereClause::new_column_equality(
@@ -110,8 +150,11 @@ mod tests {
             "pk".to_owned(),
             Chamber::Key(2),
         ).unwrap();
-        let select_command =
-            SelectCommand::new_table_scan(&table, where_clause);
+        let select_command = SelectCommand::new_table_scan(
+            &table,
+            vec!["title".to_owned()],
+            where_clause,
+        );
         let result_rows = select_command.execute();
         assert_eq!(result_rows.len(), 1);
         assert_eq!(
@@ -128,8 +171,11 @@ mod tests {
             "year".to_owned(),
             Chamber::Integer(2015),
         ).unwrap();
-        let select_command =
-            SelectCommand::new_table_scan(&table, where_clause);
+        let select_command = SelectCommand::new_table_scan(
+            &table,
+            vec!["title".to_owned()],
+            where_clause,
+        );
         let result_rows = select_command.execute();
         assert_eq!(result_rows.len(), 2);
         assert_eq!(
