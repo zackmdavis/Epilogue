@@ -38,12 +38,12 @@ impl Chamber {
 
 #[derive(Debug)]
 crate struct Column {
-    name: String,
-    column_type: ColumnType,
+    crate name: String,
+    crate column_type: ColumnType,
 }
 
 crate struct TableSchema {
-    layout: Vec<Column>,
+    crate layout: Vec<Column>,
 }
 
 impl TableSchema {
