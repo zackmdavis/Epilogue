@@ -6,7 +6,7 @@ use std::error::Error;
 use crate::table::{Chamber, Row, Table, TableSchema};
 
 #[derive(Debug)]
-struct WhereClause {
+struct WhereSubcommand {
     // XXX TODO: starting out with supporting just a single `column = value`
     // condition, but should eventually expand to conj-/dis-junctions, &c.
     //
@@ -41,7 +41,7 @@ fn column_names_to_offsets(
     }
 }
 
-impl WhereClause {
+impl WhereSubcommand {
     fn new_column_equality(
         schema: &TableSchema,
         column_name: String,
@@ -71,7 +71,7 @@ impl<'a> SelectCommand<'a> {
     fn new_table_scan(
         table: &'a Table,
         column_names: Vec<String>,
-        where_clause: WhereClause,
+        where_clause: WhereSubcommand,
     ) -> Self {
         Self {
             column_offsets: column_names_to_offsets(
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn concerning_select_by_primary_key() {
         let table = example_table();
-        let where_clause = WhereClause::new_column_equality(
+        let where_clause = WhereSubcommand::new_column_equality(
             &table.schema,
             "pk".to_owned(),
             Chamber::Key(2),
@@ -172,7 +172,7 @@ mod tests {
     #[test]
     fn concerning_select_by_integer() {
         let table = example_table();
-        let where_clause = WhereClause::new_column_equality(
+        let where_clause = WhereSubcommand::new_column_equality(
             &table.schema,
             "year".to_owned(),
             Chamber::Integer(2015),
@@ -186,7 +186,9 @@ mod tests {
         assert_eq!(result_rows.len(), 2);
         assert_eq!(
             vec![
-                vec![&Chamber::String("Galileo's Middle Finger".to_owned())],
+                vec![&Chamber::String(
+                    "Galileo's Middle Finger".to_owned(),
+                )],
                 vec![&Chamber::String("Thing Explainer".to_owned())],
             ],
             result_rows

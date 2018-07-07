@@ -1,7 +1,11 @@
 #![warn(rust_2018_idioms, rust_2018_compatibility)]
 #![feature(nll)]
 
+#[macro_use]
+extern crate nom;
+
 mod query_planner;
+mod sql;
 mod table;
 
 use std::error::Error;
