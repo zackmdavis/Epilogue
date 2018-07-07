@@ -93,6 +93,13 @@ mod tests {
             ]))
             .unwrap();
         table
+            .insert(Row(vec![
+                Chamber::Key(0),
+                Chamber::String("Thing Explainer".to_owned()),
+                Chamber::Integer(2015),
+            ]))
+            .unwrap();
+        table
     }
 
     #[test]
@@ -110,6 +117,30 @@ mod tests {
         assert_eq!(
             result_rows[0].0[1],
             Chamber::String("Galileo's Middle Finger".to_owned())
+        );
+    }
+
+    #[test]
+    fn concerning_select_by_integer() {
+        let table = example_table();
+        let where_clause = WhereClause::new_column_equality(
+            &table.schema,
+            "year".to_owned(),
+            Chamber::Integer(2015),
+        ).unwrap();
+        let select_command =
+            SelectCommand::new_table_scan(&table, where_clause);
+        let result_rows = select_command.execute();
+        assert_eq!(result_rows.len(), 2);
+        assert_eq!(
+            vec![
+                &Chamber::String("Galileo's Middle Finger".to_owned()),
+                &Chamber::String("Thing Explainer".to_owned()),
+            ],
+            result_rows
+                .iter()
+                .map(|row| &row.0[1])
+                .collect::<Vec<_>>(),
         );
     }
 
