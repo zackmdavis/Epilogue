@@ -56,6 +56,7 @@ impl TableSchema {
         }
     }
 
+    // TODO: verify uniqueness of column names!!
     crate fn add_column(&mut self, name: String, column_type: ColumnType) {
         self.layout.push(Column {
             name,

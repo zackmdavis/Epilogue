@@ -21,8 +21,7 @@ fn column_names_to_offsets(
     schema: &TableSchema,
     column_names: &[String],
 ) -> Result<Vec<usize>, Box<dyn Error>> {
-    // TODO: error if some column names are not found!!
-    Ok(schema
+    let offsets = schema
         .layout
         .iter()
         .enumerate()
@@ -33,7 +32,13 @@ fn column_names_to_offsets(
                 None
             }
         })
-        .collect())
+        .collect::<Vec<_>>();
+    if offsets.len() == column_names.len() {
+        Ok(offsets)
+    } else {
+        // TODO: more precise error message
+        Err(From::from("some column names not found"))
+    }
 }
 
 impl WhereClause {
@@ -42,14 +47,8 @@ impl WhereClause {
         column_name: String,
         value: Chamber,
     ) -> Result<Self, Box<dyn Error>> {
-        let (i, _column) = schema
-            .layout
-            .iter()
-            .enumerate()
-            .find(|i_col| i_col.1.name == column_name)
-            .ok_or(format!("no column named {}", column_name))?;
         Ok(Self {
-            column_offset: i,
+            column_offset: column_names_to_offsets(schema, &[column_name])?[0],
             value,
         })
     }
@@ -84,12 +83,19 @@ impl<'a> SelectCommand<'a> {
         }
     }
 
-    fn execute(self) -> Vec<&'a Row> {
+    fn execute(self) -> Vec<Vec<&'a Chamber>> {
         // XXX: `for` loops are so pedestrian
+        // XXX: overloading the word "result"?
         let mut results = Vec::new();
         for row in self.view {
             if (self.filter)(row) {
-                results.push(row);
+                let mut result = Vec::new();
+                for (i, chamber) in row.0.iter().enumerate() {
+                    if self.column_offsets.contains(&i) {
+                        result.push(chamber);
+                    }
+                }
+                results.push(result);
             }
         }
         results
@@ -158,8 +164,8 @@ mod tests {
         let result_rows = select_command.execute();
         assert_eq!(result_rows.len(), 1);
         assert_eq!(
-            result_rows[0].0[1],
-            Chamber::String("Galileo's Middle Finger".to_owned())
+            &Chamber::String("Galileo's Middle Finger".to_owned()),
+            result_rows[0][0],
         );
     }
 
@@ -180,13 +186,10 @@ mod tests {
         assert_eq!(result_rows.len(), 2);
         assert_eq!(
             vec![
-                &Chamber::String("Galileo's Middle Finger".to_owned()),
-                &Chamber::String("Thing Explainer".to_owned()),
+                vec![&Chamber::String("Galileo's Middle Finger".to_owned())],
+                vec![&Chamber::String("Thing Explainer".to_owned())],
             ],
             result_rows
-                .iter()
-                .map(|row| &row.0[1])
-                .collect::<Vec<_>>(),
         );
     }
 
