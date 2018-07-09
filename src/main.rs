@@ -10,17 +10,29 @@ mod table;
 
 use std::collections::HashMap;
 use std::error::Error;
+use std::io::{self, Write};
 
 use crate::query_planner::{
     column_names_to_offsets, SelectCommand, WhereSubcommand,
 };
-use crate::sql::{ColumnClause, Statement};
+use crate::sql::{parse_statement, ColumnClause, Statement};
 use crate::table::{Chamber, ColumnType, Row, Table, TableSchema};
 
 pub struct Database {
     crate tables: HashMap<String, Table>,
 }
 
+impl Database {
+    pub fn new() -> Self {
+        Self { tables: HashMap::new() }
+    }
+
+    pub fn add_table(&mut self, name: &str, table: Table) {
+        self.tables.insert(name.to_owned(), table);
+    }
+}
+
+#[derive(Debug)]
 pub enum QueryOk<'a> {
     Select(Vec<Vec<&'a Chamber>>),
     Insert(usize),
@@ -84,13 +96,29 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut schema = TableSchema::new();
     schema.add_column("title".to_owned(), ColumnType::String);
     schema.add_column("year".to_owned(), ColumnType::Integer);
-    let mut books = Table::new(schema);
-    let the_art_of_rationality = Row(vec![
-        Chamber::Key(0),
-        Chamber::String("Rationality: From AI to Zombies".to_owned()),
-        Chamber::Integer(2015),
-    ]);
-    books.insert(the_art_of_rationality)?;
-    println!("{}", books.display());
-    Ok(())
+    let books = Table::new(schema);
+    let mut db = Database::new();
+    db.add_table("books", books);
+    // let _remainder: &str;
+    // let statement: Statement;
+    let mut input_buffer = String::new();
+    loop {
+        print!("Epilogue>> ");
+        io::stdout().flush().expect("couldn't flush stdout");
+        {
+            io::stdin()
+                .read_line(&mut input_buffer)
+                .expect("couldn't read input");
+        }
+        match parse_statement(&input_buffer) {
+            Ok((_remainder, statement)) => {
+                let query_result = execute_statement(&mut db, statement);
+                println!("{:?}", query_result);
+            },
+            Err(err) => {
+                println!("{:?}", err);
+            }
+        }
+        input_buffer.truncate(0);
+    }
 }

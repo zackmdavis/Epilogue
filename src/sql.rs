@@ -3,7 +3,7 @@ use nom::{alphanumeric1, digit1, multispace0, multispace1};
 use crate::table::Chamber;
 
 #[derive(Debug, PartialEq, Eq)]
-crate enum Statement {
+pub enum Statement {
     Select(SelectStatement),
     Insert(InsertStatement),
 }
@@ -23,7 +23,7 @@ crate struct WhereClause {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-crate struct SelectStatement {
+pub struct SelectStatement {
     crate column_names: ColumnClause,
     crate table_name: String,
     crate where_clause: WhereClause,
@@ -108,7 +108,7 @@ named!(parse_select_statement<&str, Statement>,
 );
 
 #[derive(Debug, PartialEq, Eq)]
-crate struct InsertStatement {
+pub struct InsertStatement {
     crate table_name: String,
     crate values: Vec<Chamber>,
 }
@@ -149,7 +149,7 @@ named!(parse_insert_statement<&str, Statement>,
     )
 );
 
-named!(parse_statement<&str, Statement>,
+named!(pub parse_statement<&str, Statement>,
     alt!(parse_select_statement | parse_insert_statement)
 );
 

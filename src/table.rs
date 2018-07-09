@@ -86,7 +86,7 @@ impl TableSchema {
 
 crate struct Row(crate Vec<Chamber>);
 
-crate struct Table {
+pub struct Table {
     crate schema: TableSchema,
     crate rows: BTreeMap<usize, Row>,
     // TODO indices
