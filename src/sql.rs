@@ -5,7 +5,6 @@ use crate::table::Chamber;
 #[derive(Debug, PartialEq, Eq)]
 crate enum ColumnClause {
     Star,
-    #[allow(dead_code)]
     Names(Vec<String>),
 }
 
@@ -14,7 +13,7 @@ crate struct WhereClause {
     column_name: String,
     // XXX TODO: this actually needs to be a `Chamber`
     // and how will we detect Integer vs. Key?!
-    value: isize,
+    value: Chamber,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -23,53 +22,6 @@ crate struct SelectStatement {
     table_name: String,
     where_clause: WhereClause,
 }
-
-named!(parse_where_clause<&str, WhereClause>,
-    do_parse!(
-        tag!("WHERE") >>
-        multispace1 >>
-        column_name: alphanumeric1 >>
-        multispace0 >>
-        tag!("=") >>
-        multispace0 >>
-        value: digit1 >>
-        (WhereClause { column_name: column_name.to_owned(),
-                       value: value.parse().unwrap() })
-    )
-);
-
-named!(parse_select_statement<&str, SelectStatement>,
-   do_parse!(
-       tag!("SELECT") >>
-       multispace1 >>
-       tag!("*") >>
-       multispace1 >>
-       tag!("FROM") >>
-       multispace1 >>
-       table_name: alphanumeric1 >>
-       multispace1 >>
-       where_clause: parse_where_clause >>
-       multispace0 >>
-       tag!(";") >>
-       (SelectStatement { column_names: ColumnClause::Star,
-                          table_name: table_name.to_string(),
-                          where_clause })
-   )
-);
-
-#[derive(Debug, PartialEq, Eq)]
-crate struct InsertStatement {
-    table_name: String,
-    values: Vec<Chamber>,
-}
-
-named!(commaspace <&str, char>,
-   delimited!(
-       multispace0,
-       char!(','),
-       multispace0
-   )
-);
 
 named!(string_literal <&str, Chamber>,
     do_parse!(
@@ -91,6 +43,73 @@ named!(integer_literal <&str, Chamber>,
 
 named!(literal <&str, Chamber>,
     alt!(integer_literal | string_literal)
+);
+
+named!(parse_where_clause<&str, WhereClause>,
+    do_parse!(
+        tag!("WHERE") >>
+        multispace1 >>
+        column_name: alphanumeric1 >>
+        multispace0 >>
+        tag!("=") >>
+        multispace0 >>
+        value: literal >>
+        (WhereClause { column_name: column_name.to_owned(),
+                       value })
+    )
+);
+
+named!(parse_star<&str, ColumnClause>,
+    do_parse!(
+        tag!("*") >>
+        (ColumnClause::Star)
+    )
+);
+
+named!(parse_select_column_names<&str, ColumnClause>,
+    do_parse!(
+        names: separated_list!(commaspace, alphanumeric1) >>
+        (ColumnClause::Names(names.iter().map(|name| {
+            name.clone().to_owned() // really?
+        }).collect()))
+    )
+);
+
+named!(parse_select_column_clause<&str, ColumnClause>,
+    alt!(parse_star | parse_select_column_names)
+);
+
+named!(parse_select_statement<&str, SelectStatement>,
+   do_parse!(
+       tag!("SELECT") >>
+       multispace1 >>
+       column_names: parse_select_column_clause >>
+       multispace1 >>
+       tag!("FROM") >>
+       multispace1 >>
+       table_name: alphanumeric1 >>
+       multispace1 >>
+       where_clause: parse_where_clause >>
+       multispace0 >>
+       tag!(";") >>
+       (SelectStatement { column_names,
+                          table_name: table_name.to_string(),
+                          where_clause })
+   )
+);
+
+#[derive(Debug, PartialEq, Eq)]
+crate struct InsertStatement {
+    table_name: String,
+    values: Vec<Chamber>,
+}
+
+named!(commaspace <&str, char>,
+   delimited!(
+       multispace0,
+       char!(','),
+       multispace0
+   )
 );
 
 named!(parse_values <&str, Vec<Chamber>>,
@@ -134,7 +153,7 @@ mod tests {
                 " ",
                 WhereClause {
                     column_name: "year".to_owned(),
-                    value: 2018isize
+                    value: Chamber::Integer(2018)
                 }
             ))
         );
@@ -151,7 +170,30 @@ mod tests {
                     table_name: "books".to_owned(),
                     where_clause: WhereClause {
                         column_name: "year".to_owned(),
-                        value: 2018isize
+                        value: Chamber::Integer(2018)
+                    },
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn concerning_parsing_a_select_column_names_statement() {
+        assert_eq!(
+            parse_select_statement(
+                "SELECT title, author FROM books WHERE year = 2018;"
+            ),
+            Ok((
+                "",
+                SelectStatement {
+                    column_names: ColumnClause::Names(vec![
+                        "title".to_owned(),
+                        "author".to_owned(),
+                    ]),
+                    table_name: "books".to_owned(),
+                    where_clause: WhereClause {
+                        column_name: "year".to_owned(),
+                        value: Chamber::Integer(2018),
                     },
                 }
             ))
