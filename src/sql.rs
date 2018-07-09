@@ -71,11 +71,32 @@ named!(commaspace <&str, char>,
    )
 );
 
-named!(values <&str, Vec<&str>>,
+named!(string_literal <&str, Chamber>,
+    do_parse!(
+        value: delimited!(
+            char!('\''),
+            take_until!("'"),
+            char!('\'')
+        ) >>
+        (Chamber::String(value.to_owned()))
+    )
+);
+
+named!(integer_literal <&str, Chamber>,
+    do_parse!(
+        value: digit1 >>
+        (Chamber::Integer(value.parse().unwrap()))
+    )
+);
+
+named!(literal <&str, Chamber>,
+    alt!(integer_literal | string_literal)
+);
+
+named!(parse_values <&str, Vec<Chamber>>,
     delimited!(
         char!('('),
-        // TODO: accept both string as well as ints (and again, keys?!)
-        separated_list!(commaspace, digit1),
+        separated_list!(commaspace, literal),
         char!(')')
     )
 );
@@ -90,13 +111,12 @@ named!(parse_insert_statement<&str, InsertStatement>,
         multispace1 >>
         tag!("VALUES") >>
         multispace1 >>
-        values: values >>
+        values: parse_values >>
         multispace0 >>
         tag!(";") >>
         (InsertStatement {
             table_name: table_name.to_string(),
-            values: values.iter()
-                .map(|int| Chamber::Integer(int.parse().unwrap())).collect()
+            values
         })
     )
 );
@@ -104,7 +124,6 @@ named!(parse_insert_statement<&str, InsertStatement>,
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[allow(unused_imports)]
     use crate::table::Chamber;
 
     #[test]
@@ -140,6 +159,46 @@ mod tests {
     }
 
     #[test]
+    fn concerning_the_parsing_of_literals() {
+        assert_eq!(
+            string_literal("'hello SQL world'"),
+            Ok((
+                "",
+                Chamber::String("hello SQL world".to_owned())
+            ))
+        );
+        assert_eq!(
+            literal("'hello SQL world'"),
+            Ok((
+                "",
+                Chamber::String("hello SQL world".to_owned())
+            ))
+        );
+        assert_eq!(
+            integer_literal("9001 "),
+            Ok((" ", Chamber::Integer(9001)))
+        );
+        assert_eq!(
+            literal("9001 "),
+            Ok((" ", Chamber::Integer(9001)))
+        )
+    }
+
+    #[test]
+    fn concerning_the_parsing_of_value_lists() {
+        assert_eq!(
+            parse_values("(1, 'Structure and Interpretation')"),
+            Ok((
+                "",
+                vec![
+                    Chamber::Integer(1),
+                    Chamber::String("Structure and Interpretation".to_owned()),
+                ]
+            ))
+        )
+    }
+
+    #[test]
     fn concerning_parsing_an_insert_integers_statement() {
         assert_eq!(
             parse_insert_statement("INSERT INTO prices VALUES (120, 8401);"),
@@ -150,6 +209,29 @@ mod tests {
                     values: vec![
                         Chamber::Integer(120),
                         Chamber::Integer(8401),
+                    ],
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn concerning_parsing_an_insert_statement() {
+        assert_eq!(
+            parse_insert_statement(
+                "INSERT INTO books VALUES \
+                 ('Mathematical Analysis: A Concise Introduction', 2007);"
+            ),
+            Ok((
+                "",
+                InsertStatement {
+                    table_name: "books".to_owned(),
+                    values: vec![
+                        Chamber::String(
+                            "Mathematical Analysis: A Concise Introduction"
+                                .to_owned(),
+                        ),
+                        Chamber::Integer(2007),
                     ],
                 }
             ))
