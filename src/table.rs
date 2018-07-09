@@ -12,7 +12,7 @@ crate enum ColumnType {
 
 // TODO: `Option`-ize to represent NULL?
 #[derive(Clone, Debug, PartialEq, Eq)]
-crate enum Chamber {
+pub enum Chamber {
     Key(usize),
     Integer(isize),
     String(String),

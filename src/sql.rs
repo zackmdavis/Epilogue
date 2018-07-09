@@ -16,17 +16,17 @@ crate enum ColumnClause {
 
 #[derive(Debug, PartialEq, Eq)]
 crate struct WhereClause {
-    column_name: String,
+    crate column_name: String,
     // XXX TODO: this actually needs to be a `Chamber`
     // and how will we detect Integer vs. Key?!
-    value: Chamber,
+    crate value: Chamber,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 crate struct SelectStatement {
-    column_names: ColumnClause,
-    table_name: String,
-    where_clause: WhereClause,
+    crate column_names: ColumnClause,
+    crate table_name: String,
+    crate where_clause: WhereClause,
 }
 
 named!(string_literal <&str, Chamber>,
@@ -109,8 +109,8 @@ named!(parse_select_statement<&str, Statement>,
 
 #[derive(Debug, PartialEq, Eq)]
 crate struct InsertStatement {
-    table_name: String,
-    values: Vec<Chamber>,
+    crate table_name: String,
+    crate values: Vec<Chamber>,
 }
 
 named!(commaspace <&str, char>,

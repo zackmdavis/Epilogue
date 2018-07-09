@@ -1,23 +1,21 @@
-#![allow(dead_code)]
-
 use std::collections::btree_map;
 use std::error::Error;
 
 use crate::table::{Chamber, Row, Table, TableSchema};
 
 #[derive(Debug)]
-struct WhereSubcommand {
+crate struct WhereSubcommand {
     // XXX TODO: starting out with supporting just a single `column = value`
     // condition, but should eventually expand to conj-/dis-junctions, &c.
     //
     // Use a column offset (don't want to overload the word "index") instead of
     // a name so that we can operate on Row directly rather than looking up the
     // name
-    column_offset: usize,
-    value: Chamber,
+    crate column_offset: usize,
+    crate value: Chamber,
 }
 
-fn column_names_to_offsets(
+crate fn column_names_to_offsets(
     schema: &TableSchema,
     column_names: &[String],
 ) -> Result<Vec<usize>, Box<dyn Error>> {
@@ -53,7 +51,7 @@ impl WhereSubcommand {
         })
     }
 
-    fn operationalize(self) -> impl Fn(&Row) -> bool + 'static {
+    crate fn operationalize(self) -> impl Fn(&Row) -> bool + 'static {
         move |row| {
             let pred = row.0[self.column_offset] == self.value;
             pred
@@ -61,10 +59,10 @@ impl WhereSubcommand {
     }
 }
 
-struct SelectCommand<'a> {
-    column_offsets: Vec<usize>,
-    view: btree_map::Values<'a, usize, Row>,
-    filter: Box<dyn Fn(&Row) -> bool>,
+crate struct SelectCommand<'a> {
+    crate column_offsets: Vec<usize>,
+    crate view: btree_map::Values<'a, usize, Row>,
+    crate filter: Box<dyn Fn(&Row) -> bool>,
 }
 
 impl<'a> SelectCommand<'a> {
@@ -83,7 +81,7 @@ impl<'a> SelectCommand<'a> {
         }
     }
 
-    fn execute(self) -> Vec<Vec<&'a Chamber>> {
+    crate fn execute(self) -> Vec<Vec<&'a Chamber>> {
         // XXX: `for` loops are so pedestrian
         // XXX: overloading the word "result"?
         let mut results = Vec::new();
