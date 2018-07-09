@@ -40,7 +40,7 @@ crate fn column_names_to_offsets(
 }
 
 impl WhereSubcommand {
-    fn new_column_equality(
+    crate fn new_column_equality(
         schema: &TableSchema,
         column_name: String,
         value: Chamber,
@@ -66,7 +66,7 @@ crate struct SelectCommand<'a> {
 }
 
 impl<'a> SelectCommand<'a> {
-    fn new_table_scan(
+    crate fn new_table_scan(
         table: &'a Table,
         column_names: Vec<String>,
         where_clause: WhereSubcommand,

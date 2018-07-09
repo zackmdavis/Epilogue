@@ -1,4 +1,5 @@
 #![warn(rust_2018_idioms, rust_2018_compatibility)]
+#![allow(unreachable_pub)] // TODO
 #![feature(nll)]
 
 #[macro_use]
@@ -12,9 +13,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::io::{self, Write};
 
-use crate::query_planner::{
-    column_names_to_offsets, SelectCommand, WhereSubcommand,
-};
+use crate::query_planner::{SelectCommand, WhereSubcommand};
 use crate::sql::{parse_statement, ColumnClause, Statement};
 use crate::table::{Chamber, ColumnType, Row, Table, TableSchema};
 
@@ -24,7 +23,9 @@ pub struct Database {
 
 impl Database {
     pub fn new() -> Self {
-        Self { tables: HashMap::new() }
+        Self {
+            tables: HashMap::new(),
+        }
     }
 
     pub fn add_table(&mut self, name: &str, table: Table) {
@@ -60,22 +61,16 @@ fn execute_statement<'db>(
                     .collect(),
                 ColumnClause::Names(names) => names,
             };
-            let command = SelectCommand {
-                column_offsets: column_names_to_offsets(
-                    &table.schema,
-                    &column_names,
-                )?,
-                view: table.rows.values(),
-                filter: Box::new(
-                    WhereSubcommand {
-                        column_offset: column_names_to_offsets(
-                            &table.schema,
-                            &[statement.where_clause.column_name],
-                        )?[0],
-                        value: statement.where_clause.value,
-                    }.operationalize(),
-                ),
-            };
+            let where_subcommand = WhereSubcommand::new_column_equality(
+                &table.schema,
+                statement.where_clause.column_name,
+                statement.where_clause.value,
+            )?;
+            let command = SelectCommand::new_table_scan(
+                &table,
+                column_names,
+                where_subcommand,
+            );
             Ok(QueryOk::Select(command.execute()))
         }
         Statement::Insert(statement) => {
@@ -92,29 +87,37 @@ fn execute_statement<'db>(
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    println!("Hello Epilogue world!");
+    println!("Welcome to Epilogue (pre-α)!");
     let mut schema = TableSchema::new();
     schema.add_column("title".to_owned(), ColumnType::String);
     schema.add_column("year".to_owned(), ColumnType::Integer);
     let books = Table::new(schema);
     let mut db = Database::new();
     db.add_table("books", books);
-    // let _remainder: &str;
-    // let statement: Statement;
+    println!("There is a table 'books' with string column 'title' \
+              and integer column 'year'.");
     let mut input_buffer = String::new();
     loop {
         print!("Epilogue>> ");
-        io::stdout().flush().expect("couldn't flush stdout");
+        io::stdout()
+            .flush()
+            .expect("couldn't flush stdout");
         {
             io::stdin()
                 .read_line(&mut input_buffer)
                 .expect("couldn't read input");
         }
+
+        if input_buffer.trim() == "PRINT" { // demo
+            println!("{}", db.tables.get("books").unwrap().display());
+            continue;
+        }
+
         match parse_statement(&input_buffer) {
             Ok((_remainder, statement)) => {
                 let query_result = execute_statement(&mut db, statement);
                 println!("{:?}", query_result);
-            },
+            }
             Err(err) => {
                 println!("{:?}", err);
             }
