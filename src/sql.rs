@@ -3,6 +3,12 @@ use nom::{alphanumeric1, digit1, multispace0, multispace1};
 use crate::table::Chamber;
 
 #[derive(Debug, PartialEq, Eq)]
+crate enum Statement {
+    Select(SelectStatement),
+    Insert(InsertStatement),
+}
+
+#[derive(Debug, PartialEq, Eq)]
 crate enum ColumnClause {
     Star,
     Names(Vec<String>),
@@ -79,7 +85,7 @@ named!(parse_select_column_clause<&str, ColumnClause>,
     alt!(parse_star | parse_select_column_names)
 );
 
-named!(parse_select_statement<&str, SelectStatement>,
+named!(parse_select_statement<&str, Statement>,
    do_parse!(
        tag!("SELECT") >>
        multispace1 >>
@@ -92,9 +98,12 @@ named!(parse_select_statement<&str, SelectStatement>,
        where_clause: parse_where_clause >>
        multispace0 >>
        tag!(";") >>
-       (SelectStatement { column_names,
-                          table_name: table_name.to_string(),
-                          where_clause })
+       (Statement::Select(
+           SelectStatement { column_names,
+                             table_name: table_name.to_string(),
+                             where_clause }
+           )
+       )
    )
 );
 
@@ -120,7 +129,7 @@ named!(parse_values <&str, Vec<Chamber>>,
     )
 );
 
-named!(parse_insert_statement<&str, InsertStatement>,
+named!(parse_insert_statement<&str, Statement>,
     do_parse!(
         tag!("INSERT") >>
         multispace1 >>
@@ -133,11 +142,15 @@ named!(parse_insert_statement<&str, InsertStatement>,
         values: parse_values >>
         multispace0 >>
         tag!(";") >>
-        (InsertStatement {
+        (Statement::Insert(InsertStatement {
             table_name: table_name.to_string(),
             values
-        })
+        }))
     )
+);
+
+named!(parse_statement<&str, Statement>,
+    alt!(parse_select_statement | parse_insert_statement)
 );
 
 #[cfg(test)]
@@ -165,14 +178,14 @@ mod tests {
             parse_select_statement("SELECT * FROM books WHERE year = 2018;"),
             Ok((
                 "",
-                SelectStatement {
+                Statement::Select(SelectStatement {
                     column_names: ColumnClause::Star,
                     table_name: "books".to_owned(),
                     where_clause: WhereClause {
                         column_name: "year".to_owned(),
                         value: Chamber::Integer(2018)
                     },
-                }
+                })
             ))
         );
     }
@@ -185,7 +198,7 @@ mod tests {
             ),
             Ok((
                 "",
-                SelectStatement {
+                Statement::Select(SelectStatement {
                     column_names: ColumnClause::Names(vec![
                         "title".to_owned(),
                         "author".to_owned(),
@@ -195,7 +208,7 @@ mod tests {
                         column_name: "year".to_owned(),
                         value: Chamber::Integer(2018),
                     },
-                }
+                })
             ))
         );
     }
@@ -246,13 +259,13 @@ mod tests {
             parse_insert_statement("INSERT INTO prices VALUES (120, 8401);"),
             Ok((
                 "",
-                InsertStatement {
+                Statement::Insert(InsertStatement {
                     table_name: "prices".to_owned(),
                     values: vec![
                         Chamber::Integer(120),
                         Chamber::Integer(8401),
                     ],
-                }
+                })
             ))
         );
     }
@@ -266,7 +279,7 @@ mod tests {
             ),
             Ok((
                 "",
-                InsertStatement {
+                Statement::Insert(InsertStatement {
                     table_name: "books".to_owned(),
                     values: vec![
                         Chamber::String(
@@ -275,7 +288,7 @@ mod tests {
                         ),
                         Chamber::Integer(2007),
                     ],
-                }
+                })
             ))
         );
     }
