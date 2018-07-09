@@ -1,5 +1,7 @@
 use nom::{alphanumeric1, digit1, multispace0, multispace1};
 
+use crate::table::Chamber;
+
 #[derive(Debug, PartialEq, Eq)]
 crate enum ColumnClause {
     Star,
@@ -55,6 +57,43 @@ named!(parse_select_statement<&str, SelectStatement>,
    )
 );
 
+#[derive(Debug, PartialEq, Eq)]
+crate struct InsertStatement {
+    table_name: String,
+    values: Vec<Chamber>,
+}
+
+named!(values <&str, Vec<&str>>,
+    delimited!(
+        char!('('),
+        // TODO: accept both string as well as ints (and again, keys?!)
+        // TODO: accept optional spaces!
+        separated_list!(char!(','), digit1),
+        char!(')')
+    )
+);
+
+named!(parse_insert_statement<&str, InsertStatement>,
+    do_parse!(
+        tag!("INSERT") >>
+        multispace1 >>
+        tag!("INTO") >>
+        multispace1 >>
+        table_name: alphanumeric1 >>
+        multispace1 >>
+        tag!("VALUES") >>
+        multispace1 >>
+        values: values >>
+        multispace0 >>
+        tag!(";") >>
+        (InsertStatement {
+            table_name: table_name.to_string(),
+            values: values.iter()
+                .map(|int| Chamber::Integer(int.parse().unwrap())).collect()
+        })
+    )
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,6 +127,23 @@ mod tests {
                         column_name: "year".to_owned(),
                         value: 2018isize
                     },
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn concerning_parsing_an_insert_integers_statement() {
+        assert_eq!(
+            parse_insert_statement("INSERT INTO prices VALUES (120,8401);"),
+            Ok((
+                "",
+                InsertStatement {
+                    table_name: "prices".to_owned(),
+                    values: vec![
+                        Chamber::Integer(120),
+                        Chamber::Integer(8401),
+                    ],
                 }
             ))
         );
