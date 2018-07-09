@@ -63,12 +63,19 @@ crate struct InsertStatement {
     values: Vec<Chamber>,
 }
 
+named!(commaspace <&str, char>,
+   delimited!(
+       multispace0,
+       char!(','),
+       multispace0
+   )
+);
+
 named!(values <&str, Vec<&str>>,
     delimited!(
         char!('('),
         // TODO: accept both string as well as ints (and again, keys?!)
-        // TODO: accept optional spaces!
-        separated_list!(char!(','), digit1),
+        separated_list!(commaspace, digit1),
         char!(')')
     )
 );
@@ -135,7 +142,7 @@ mod tests {
     #[test]
     fn concerning_parsing_an_insert_integers_statement() {
         assert_eq!(
-            parse_insert_statement("INSERT INTO prices VALUES (120,8401);"),
+            parse_insert_statement("INSERT INTO prices VALUES (120, 8401);"),
             Ok((
                 "",
                 InsertStatement {
