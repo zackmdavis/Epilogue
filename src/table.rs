@@ -27,6 +27,7 @@ impl Chamber {
         }
     }
 
+    #[allow(dead_code)]
     crate fn display(&self) -> String {
         match self {
             Chamber::Key(k) => format!("{}", k),
@@ -110,6 +111,7 @@ impl Table {
         Ok(pk)
     }
 
+    #[allow(dead_code)]
     crate fn display(&self) -> String {
         let mut buf = Vec::new();
         // TODO don't use such absolute paths (but I want to avoid collisions

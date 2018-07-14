@@ -11,7 +11,8 @@ mod table;
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::io::{self, Write};
+
+use rustyline::{self, error::ReadlineError};
 
 use crate::query_planner::{SelectCommand, WhereSubcommand};
 use crate::sql::{parse_statement, ColumnClause, Statement};
@@ -86,7 +87,7 @@ fn execute_statement<'db>(
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     println!("Welcome to Epilogue (pre-α)!");
     let mut schema = TableSchema::new();
     schema.add_column("title".to_owned(), ColumnType::String);
@@ -96,32 +97,35 @@ fn main() -> Result<(), Box<dyn Error>> {
     db.add_table("books", books);
     println!("There is a table 'books' with string column 'title' \
               and integer column 'year'.");
-    let mut input_buffer = String::new();
+    // TODO: completion
+    let mut line_reader = rustyline::Editor::<()>::new();
     loop {
-        print!("Epilogue>> ");
-        io::stdout()
-            .flush()
-            .expect("couldn't flush stdout");
-        {
-            io::stdin()
-                .read_line(&mut input_buffer)
-                .expect("couldn't read input");
-        }
-
-        if input_buffer.trim() == "PRINT" { // demo
-            println!("{}", db.tables.get("books").unwrap().display());
-            continue;
-        }
-
-        match parse_statement(&input_buffer) {
-            Ok((_remainder, statement)) => {
-                let query_result = execute_statement(&mut db, statement);
-                println!("{:?}", query_result);
-            }
+        let read = line_reader.readline("Epilogue>> ");
+        match read {
+            Ok(line) => {
+                line_reader.add_history_entry(line.as_ref());
+                match parse_statement(&line) {
+                    Ok((_remainder, statement)) => {
+                        let query_result = execute_statement(&mut db, statement);
+                        println!("{:?}", query_result);
+                    }
+                    Err(err) => {
+                        println!("{:?}", err);
+                    }
+                }
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("Interrupted!");
+                break;
+            },
+            Err(ReadlineError::Eof) => {
+                println!("Exited!");
+                break;
+            },
             Err(err) => {
-                println!("{:?}", err);
+                println!("Readline error not otherwise specified?!—{:?}", err);
+                break;
             }
         }
-        input_buffer.truncate(0);
     }
 }
