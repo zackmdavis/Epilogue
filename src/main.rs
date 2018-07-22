@@ -1,5 +1,4 @@
 #![warn(rust_2018_idioms, rust_2018_compatibility)]
-#![allow(unreachable_pub)] // TODO
 #![feature(nll)]
 
 #[macro_use]

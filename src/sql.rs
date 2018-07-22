@@ -2,26 +2,31 @@ use nom::{alphanumeric1, digit1, multispace0, multispace1};
 
 use crate::table::Chamber;
 
+#[allow(unreachable_pub)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Statement {
     Select(SelectStatement),
     Insert(InsertStatement),
 }
 
+#[allow(unreachable_pub)]
 #[derive(Debug, PartialEq, Eq)]
 crate enum ColumnClause {
     Star,
     Names(Vec<String>),
 }
 
+#[allow(unreachable_pub)]
 #[derive(Debug, PartialEq, Eq)]
-crate struct WhereClause {
+pub struct WhereClause {
     crate column_name: String,
     // XXX TODO: this actually needs to be a `Chamber`
     // and how will we detect Integer vs. Key?!
     crate value: Chamber,
 }
 
+
+#[allow(unreachable_pub)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct SelectStatement {
     crate column_names: ColumnClause,
@@ -107,6 +112,7 @@ named!(parse_select_statement<&str, Statement>,
    )
 );
 
+#[allow(unreachable_pub)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct InsertStatement {
     crate table_name: String,
@@ -149,6 +155,7 @@ named!(parse_insert_statement<&str, Statement>,
     )
 );
 
+// nom doesn't know about `pub(crate)`/`crate` (Issue #807, PR #792)
 named!(pub parse_statement<&str, Statement>,
     alt!(parse_select_statement | parse_insert_statement)
 );
