@@ -61,11 +61,16 @@ fn execute_statement<'db>(
                     .collect(),
                 ColumnClause::Names(names) => names,
             };
-            let where_subcommand = WhereSubcommand::new_column_equality(
-                &table.schema,
-                statement.where_clause.column_name,
-                statement.where_clause.value,
-            )?;
+
+            let where_subcommand = match statement.where_clause {
+                Some(where_clause) => WhereSubcommand::new_column_equality(
+                    &table.schema,
+                    where_clause.column_name,
+                    where_clause.value,
+                )?,
+                None => WhereSubcommand::new_unconditional(),
+            };
+
             let command = SelectCommand::new_table_scan(
                 &table,
                 column_names,
@@ -94,8 +99,10 @@ fn main() {
     let books = Table::new(schema);
     let mut db = Database::new();
     db.add_table("books", books);
-    println!("There is a table 'books' with string column 'title' \
-              and integer column 'year'.");
+    println!(
+        "There is a table 'books' with string column 'title' \
+         and integer column 'year'."
+    );
     // TODO: completion
     let mut line_reader = rustyline::Editor::<()>::new();
     loop {
@@ -105,24 +112,28 @@ fn main() {
                 line_reader.add_history_entry(line.as_ref());
                 match parse_statement(&line) {
                     Ok((_remainder, statement)) => {
-                        let query_result = execute_statement(&mut db, statement);
+                        let query_result =
+                            execute_statement(&mut db, statement);
                         println!("{:?}", query_result);
                     }
                     Err(err) => {
                         println!("{:?}", err);
                     }
                 }
-            },
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted!");
                 break;
-            },
+            }
             Err(ReadlineError::Eof) => {
                 println!("Exited!");
                 break;
-            },
+            }
             Err(err) => {
-                println!("Readline error not otherwise specified?!—{:?}", err);
+                println!(
+                    "Readline error not otherwise specified?!—{:?}",
+                    err
+                );
                 break;
             }
         }

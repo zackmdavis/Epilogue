@@ -13,6 +13,9 @@ crate struct WhereSubcommand {
     // name
     crate column_offset: usize,
     crate value: Chamber,
+    // XXX this is a BAD design decision and I should FEEL BAD (and rework it
+    // later)
+    crate unconditional: bool,
 }
 
 crate fn column_names_to_offsets(
@@ -40,6 +43,14 @@ crate fn column_names_to_offsets(
 }
 
 impl WhereSubcommand {
+    crate fn new_unconditional() -> Self {
+        Self {
+            column_offset: 0,           // dummy value
+            value: Chamber::Integer(0), // dummy value
+            unconditional: true,
+        }
+    }
+
     crate fn new_column_equality(
         schema: &TableSchema,
         column_name: String,
@@ -48,11 +59,15 @@ impl WhereSubcommand {
         Ok(Self {
             column_offset: column_names_to_offsets(schema, &[column_name])?[0],
             value,
+            unconditional: false,
         })
     }
 
     crate fn operationalize(self) -> impl Fn(&Row) -> bool + 'static {
         move |row| {
+            if self.unconditional {
+                return true;
+            }
             let pred = row.0[self.column_offset] == self.value;
             pred
         }

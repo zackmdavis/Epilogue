@@ -25,13 +25,12 @@ pub struct WhereClause {
     crate value: Chamber,
 }
 
-
 #[allow(unreachable_pub)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct SelectStatement {
     crate column_names: ColumnClause,
     crate table_name: String,
-    crate where_clause: WhereClause,
+    crate where_clause: Option<WhereClause>,
 }
 
 named!(string_literal <&str, Chamber>,
@@ -100,7 +99,7 @@ named!(parse_select_statement<&str, Statement>,
        multispace1 >>
        table_name: alphanumeric1 >>
        multispace1 >>
-       where_clause: parse_where_clause >>
+       where_clause: opt!(parse_where_clause) >>
        multispace0 >>
        tag!(";") >>
        (Statement::Select(
@@ -188,10 +187,25 @@ mod tests {
                 Statement::Select(SelectStatement {
                     column_names: ColumnClause::Star,
                     table_name: "books".to_owned(),
-                    where_clause: WhereClause {
+                    where_clause: Some(WhereClause {
                         column_name: "year".to_owned(),
                         value: Chamber::Integer(2018)
-                    },
+                    }),
+                })
+            ))
+        );
+    }
+
+    #[test]
+    fn concerning_parsing_a_whereless_select_statement() {
+        assert_eq!(
+            parse_select_statement("SELECT * FROM books ;"),
+            Ok((
+                "",
+                Statement::Select(SelectStatement {
+                    column_names: ColumnClause::Star,
+                    table_name: "books".to_owned(),
+                    where_clause: None
                 })
             ))
         );
@@ -211,10 +225,10 @@ mod tests {
                         "author".to_owned(),
                     ]),
                     table_name: "books".to_owned(),
-                    where_clause: WhereClause {
+                    where_clause: Some(WhereClause {
                         column_name: "year".to_owned(),
                         value: Chamber::Integer(2018),
-                    },
+                    }),
                 })
             ))
         );
