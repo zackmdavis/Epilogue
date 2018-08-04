@@ -114,7 +114,14 @@ fn main() {
                     Ok((_remainder, statement)) => {
                         let query_result =
                             execute_statement(&mut db, statement);
-                        println!("{:?}", query_result);
+                        if let Ok(QueryOk::Select(selectrows)) = query_result {
+                            // TODO: use prettytable
+                            for selectrow in selectrows {
+                                println!("{:?}", selectrow);
+                            }
+                        } else {
+                            println!("{:?}", query_result);
+                        }
                     }
                     Err(err) => {
                         println!("{:?}", err);
